@@ -1,0 +1,9 @@
+name = "hitchhikers-tracer"
+version = "0.1.0"
+license = "GPL-3.0-or-later"
+author = "Bora Yalçın"
+description = "Real-time relativistic ray tracer around black holes (CUDA Fortran)"
+
+[build]
+auto-executables = true
+auto-tests = true
