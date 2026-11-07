@@ -1,0 +1,29 @@
+# Build
+build/
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+compile_commands.json
+
+*.o
+*.obj
+*.a
+*.so
+*.mod
+*.smod
+*.exe
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+.vscode/
+.idea/
+*.swp
+
+.DS_Store
+Thumbs.db
+
+*.ppm
+*.log
