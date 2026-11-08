@@ -141,7 +141,7 @@ contains
       return
     end if
 
-    renderer = SDL_CreateRenderer(window, -1_c_int, ior(RENDERER_ACCEL, RENDERER_VSYNC))
+    renderer = SDL_CreateRenderer(window, -1_c_int, RENDERER_ACCEL)
     if (.not. c_associated(renderer)) then
       call report('SDL_CreateRenderer')
       call sdl_close()
