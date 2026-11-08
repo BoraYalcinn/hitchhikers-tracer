@@ -176,7 +176,7 @@ contains
   ! Show one finished frame. pixels holds w*h RGBA pixels, one 32-bit integer
   ! each (byte order R,G,B,A in memory), row-major, top row first.
   subroutine sdl_present(pixels)
-    integer(c_int32_t), intent(in), target :: pixels(:)
+    integer(c_int32_t), intent(in), target, contiguous :: pixels(:,:)
     integer(c_int) :: rc
 
     rc = SDL_UpdateTexture(texture, c_null_ptr, c_loc(pixels), int(4 * tex_w, c_int))

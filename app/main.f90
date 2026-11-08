@@ -8,8 +8,23 @@ program main
   logical :: ok = .true.
   logical :: quit = .false.
 
-  integer(c_int32_t), allocatable :: pixels(:)
-  allocate(pixels(screen_width*screen_height))
+  integer :: i, j
+  integer :: x, y, r, g
+  integer :: b = 64
+  integer :: a = 255
+
+  integer(c_int32_t), allocatable :: pixels(:,:)
+  allocate(pixels(screen_width, screen_height))
+
+  outer_loop: do y = 0, screen_height - 1
+    inner_loop: do x = 0, screen_width - 1
+      r = x * 255 / (screen_width - 1)
+      g = y * 255 / (screen_height - 1)
+      pixels(x + 1, y + 1) = ior(shiftl(a,24), ior(shiftl(b,16), ior(shiftl(g,8), r)))
+    end do inner_loop
+  end do outer_loop
+
+
 
   Call sdl_open("Hitchhiker's Tracer",screen_width,screen_height,ok)
   if (ok .neqv. .true.) then
