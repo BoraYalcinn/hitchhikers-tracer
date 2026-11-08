@@ -8,3 +8,4 @@ description = "Real-time relativistic ray tracer around black holes (CUDA Fortra
 auto-executables = true
 auto-tests = true
 link = ["SDL2"]
+external-modules = ["cudafor"]
