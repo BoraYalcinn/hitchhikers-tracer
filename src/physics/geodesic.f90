@@ -65,5 +65,54 @@ module geodesic
 
     end subroutine rk4_step
 
+    ! Advance a ray with fixed-step RK4 until it is captured, escapes, or
+    ! the step limit is reached.
+    !
+    ! y          state (t, r, theta, phi, p_t, p_r, p_theta, p_phi),
+    !            updated in place; holds the final state on return
+    ! h          fixed step size (affine parameter)
+    ! max_steps  maximum number of RK4 steps
+    ! r_capture  captured if r drops below this (a bit outside the horizon)
+    ! r_escape   escaped if r exceeds this while moving outward (p_r > 0)
+    ! status     0 = step limit reached, 1 = captured, 2 = escaped
+    ! nsteps     number of steps actually taken
+    !
+    ! The horizon radius depends on the spacetime, so r_capture is passed in
+    ! instead of being hard-coded.
+    !
+    ! Why: every physics test (photon sphere, capture, critical b, deflection)
+    ! and, later, the game's photon need the same loop: integrate the ray and
+    ! stop when its fate is known. Writing it once keeps the stopping rules in
+    ! one place. This is the CPU double-precision reference; the GPU renderer
+    ! has its own float kernel and is compared against this one.
+    !
+    subroutine trace_ray(y,h, max_steps, r_capture,r_escape, status, nsteps)
+
+        double precision, intent(inout) :: y(8)
+        double precision, intent(in) :: h 
+        double precision, intent(in) :: r_capture
+        double precision, intent(in) :: r_escape
+        integer, intent(in) :: max_steps
+        integer, intent(out)  :: status
+        integer, intent(out) :: nsteps
+
+        integer :: i
+        status = 0
+        nsteps = 0
+        do i = 1,max_steps
+            call rk4_step(y,h)
+            nsteps = i
+            if(y(2) < r_capture) then
+                status = 1
+                exit
+            endif
+            if(y(2) > r_escape .and. y(6) > 0.0d0) then
+                status = 2
+                exit
+            endif
+        end do
+
+    end subroutine trace_ray
+
 
 end module geodesic
