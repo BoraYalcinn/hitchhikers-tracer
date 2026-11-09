@@ -39,7 +39,7 @@ module geodesic
             end do
         end do
     end do
-    
+
     end subroutine rhs
  
     attributes(host,device) subroutine rk4_step(y,h)
@@ -52,6 +52,16 @@ module geodesic
     double precision :: k3(8)
     double precision :: k4(8)
     double precision :: ytemp(8)
+
+    call rhs(y,k1)
+    ytemp = y + 0.5d0*h*k1
+    call rhs(ytemp,k2)
+    ytemp = y + 0.5d0*h*k2
+    call rhs(ytemp,k3)
+    ytemp = y + h*k3
+    call rhs(ytemp,k4)
+
+    y = y + h/6.0d0 * (k1 + 2.0d0 * k2 + 2.0d0 * k3 + k4)
 
     end subroutine rk4_step
 
