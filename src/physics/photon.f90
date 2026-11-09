@@ -1,4 +1,72 @@
 module photon
+    use cudafor
+    use metric, only: metric_cov, metric_inv
     implicit none
 
+    contains
+    attributes(host,device) subroutine init_ray(r,theta,phi,n,y)
+    
+        double precision, intent(in) :: r
+        double precision, intent(in) :: theta
+        double precision, intent(in) :: phi
+        double precision, intent(in) :: n(3)
+        double precision, intent(out) :: y(8)
+
+        double precision :: gcov(4,4)
+        double precision :: x(4)
+        double precision :: normalized_n(3)
+
+        double precision :: k(4)
+        double precision :: p(4)
+
+        integer :: nu
+        integer :: mu
+
+        x = [0.0d0,r,theta,phi]
+        call metric_cov(x,gcov)
+        normalized_n = n / (sqrt(n(1)**2 + n(2)**2 +n(3)**2))
+
+        k(2) = normalized_n(1)/sqrt(gcov(2,2))
+        k(3) = normalized_n(2)/sqrt(gcov(3,3))
+        k(4) = normalized_n(3)/sqrt(gcov(4,4))
+        k(1) = 1.0d0/sqrt(-gcov(1,1))
+
+        p = 0.0d0
+        do mu = 1, 4
+            do nu = 1, 4
+                p(mu) = p(mu) + gcov(mu,nu) * k(nu)
+            end do
+        end do
+
+        y(1:4) = x 
+        y(5:8) = p
+
+    end subroutine
+    
+    attributes(host,device) function hamiltonian(y) result(h)
+        
+        double precision, intent(in) :: y(8)
+        double precision :: h 
+        double precision :: p(4)
+        double precision :: ginv(4,4)
+        double precision :: dginv(4,4,4)
+
+        integer :: nu
+        integer :: mu
+
+        call metric_inv(y(1:4), ginv, dginv)
+        p = y(5:8)
+        h = 0.0d0
+
+        do mu = 1, 4
+            do nu = 1, 4
+                h = h + 0.5d0 * ginv(mu,nu) * p(mu) * p(nu)
+            end do
+        end do
+
+
+    end function
+    
+
 end module photon
+
