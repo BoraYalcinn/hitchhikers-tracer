@@ -14,6 +14,7 @@ program main
   logical :: quit = .false.
 
   integer(8) :: t_start, t_now, rate 
+  integer(8) :: t0,t1
   integer :: frames
 
   integer(c_int32_t), allocatable :: pixels(:,:)
@@ -24,6 +25,7 @@ program main
   double precision, parameter :: step_scale = 0.005d0
   integer, parameter :: max_steps = 200000
   double precision :: fov_y
+  
 
   allocate(pixels(screen_width, screen_height))
   allocate(pixels_d(screen_width, screen_height))
@@ -35,8 +37,11 @@ program main
   end if
 
   fov_y = degrees_to_radians(60.0d0)
+  call system_clock(t0)
   call render_frame(pixels_d, screen_width, screen_height, fov_y, r_obs, r_capture, r_escape, step_scale, max_steps)
-    
+  call system_clock(t1)
+  print *, "render ms: ", 1000.0d0 * real(t1 - t0, 8) / real(rate, 8)
+
   call system_clock(count_rate=rate)
   call system_clock(t_start)
   frames = 0
