@@ -5,12 +5,21 @@
 ! gcov(mu,nu)     metric g_{mu nu}
 ! ginv(mu,nu)     inverse metric g^{mu nu}
 ! dginv(a,mu,nu)  derivative d g^{mu nu} / d x^a
+! metric_rhs      geodesic equation dx/dlambda, dp/dlambda for momentum p,
+!                 with only the non-zero metric terms evaluated
+!
+! The *_sp routines are the same formulas in single precision for the
+! GPU renderer; consumer GPUs run double precision at 1/64 of the
+! single precision rate. The double precision routines stay the
+! reference that the tests check against.
 module metric
   implicit none
   private
-  public :: wp, metric_inv, metric_cov
+  public :: wp, sp, metric_inv, metric_cov, metric_rhs
+  public :: metric_cov_sp, metric_rhs_sp
 
   integer, parameter :: wp = kind(1.0d0)
+  integer, parameter :: sp = kind(1.0e0)
 
 contains
 
@@ -62,5 +71,86 @@ contains
     gcov(3,3) = c1
     gcov(4,4) = c1*sin(theta)**2
   end subroutine metric_cov
+
+  attributes(host,device) pure subroutine metric_rhs(x, p, dx, dp)
+    real(wp), intent(in)  :: x(4)
+    real(wp), intent(in)  :: p(4)
+    real(wp), intent(out) :: dx(4)
+    real(wp), intent(out) :: dp(4)
+    real(wp) :: r, theta, p1, p2, p3, p4, c0, c1, c2, c3, c4, c5
+
+    r = x(2)
+    theta = x(3)
+    p1 = p(1)
+    p2 = p(2)
+    p3 = p(3)
+    p4 = p(4)
+
+    c0 = r - 2
+    c1 = r**(-2)
+    c2 = sin(theta)
+    c3 = c2**(-2)
+    c4 = r**(-3)
+    c5 = p4**2
+
+    dx(1) = -p1*r/c0
+    dx(2) = c0*p2/r
+    dx(3) = c1*p3
+    dx(4) = c1*c3*p4
+    dp(1) = 0
+    dp(2) = -c1*p2**2 + c3*c4*c5 + c4*p3**2 - p1**2/c0**2
+    dp(3) = c1*c5*cos(theta)/c2**3
+    dp(4) = 0
+  end subroutine metric_rhs
+
+  attributes(host,device) pure subroutine metric_cov_sp(x, gcov)
+    real(sp), intent(in)  :: x(4)
+    real(sp), intent(out) :: gcov(4,4)
+    real(sp) :: r, theta, c0, c1
+
+    r = x(2)
+    theta = x(3)
+
+    gcov = 0.0_sp
+
+    c0 = 1 - 2/r
+    c1 = r**2
+
+    gcov(1,1) = -c0
+    gcov(2,2) = 1.0_sp/c0
+    gcov(3,3) = c1
+    gcov(4,4) = c1*sin(theta)**2
+  end subroutine metric_cov_sp
+
+  attributes(host,device) pure subroutine metric_rhs_sp(x, p, dx, dp)
+    real(sp), intent(in)  :: x(4)
+    real(sp), intent(in)  :: p(4)
+    real(sp), intent(out) :: dx(4)
+    real(sp), intent(out) :: dp(4)
+    real(sp) :: r, theta, p1, p2, p3, p4, c0, c1, c2, c3, c4, c5
+
+    r = x(2)
+    theta = x(3)
+    p1 = p(1)
+    p2 = p(2)
+    p3 = p(3)
+    p4 = p(4)
+
+    c0 = r - 2
+    c1 = r**(-2)
+    c2 = sin(theta)
+    c3 = c2**(-2)
+    c4 = r**(-3)
+    c5 = p4**2
+
+    dx(1) = -p1*r/c0
+    dx(2) = c0*p2/r
+    dx(3) = c1*p3
+    dx(4) = c1*c3*p4
+    dp(1) = 0
+    dp(2) = -c1*p2**2 + c3*c4*c5 + c4*p3**2 - p1**2/c0**2
+    dp(3) = c1*c5*cos(theta)/c2**3
+    dp(4) = 0
+  end subroutine metric_rhs_sp
 
 end module metric

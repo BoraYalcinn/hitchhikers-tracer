@@ -26,6 +26,7 @@ program test_geodesic_kernel
     call test_radial_inward_and_outward()
     call test_step_limit()
     call test_critical_impact_parameter()
+    call test_single_precision_matches()
 
     if (failures > 0) then
         print '(a,i0,a)', 'FAILED: ', failures, ' check(s)'
@@ -94,7 +95,7 @@ contains
         call make_n_plane(8.0d0, n_plane)
         call trace_camera_ray(n_plane, r_obs, r_capture, r_escape, step_scale, max_steps, status, phi_end)
         call check_int('b=8 status', status, 2)
-        call check('b=8 phi_end', phi_end, 3.50968d0, 1.0d-3)
+        call check('b=8 phi_end', phi_end, 3.58974d0, 1.0d-3)
     end subroutine test_escapes_above_critical
 
     ! Why: the centre pixel of every image is a ray straight at the hole and the
@@ -149,5 +150,30 @@ contains
         end do
         call check('critical b', 0.5d0*(lo + hi), 3.0d0*sqrt(3.0d0), tol)
     end subroutine test_critical_impact_parameter
+
+    ! Why: the GPU runs trace_camera_ray_sp, the single precision copy of the
+    ! loop. It must give the same fate and the same phi_end to float accuracy
+    ! as the double precision reference, or the picture silently drifts from
+    ! the physics the tests above pin down. 1e-3 covers float round-off over
+    ! the ~1000 steps of a b = 8 ray.
+    subroutine test_single_precision_matches()
+        double precision :: n_plane(3), phi_end
+        real(4) :: n_plane_sp(3), phi_end_sp
+        integer :: status, status_sp
+
+        call make_n_plane(8.0d0, n_plane)
+        call trace_camera_ray(n_plane, r_obs, r_capture, r_escape, step_scale, max_steps, status, phi_end)
+        n_plane_sp = real(n_plane, 4)
+        call trace_camera_ray_sp(n_plane_sp, real(r_obs,4), real(r_capture,4), real(r_escape,4), &
+                                 real(step_scale,4), max_steps, status_sp, phi_end_sp)
+        call check_int('sp b=8 status', status_sp, status)
+        call check('sp b=8 phi_end', dble(phi_end_sp), phi_end, 1.0d-3)
+
+        call make_n_plane(3.0d0, n_plane)
+        n_plane_sp = real(n_plane, 4)
+        call trace_camera_ray_sp(n_plane_sp, real(r_obs,4), real(r_capture,4), real(r_escape,4), &
+                                 real(step_scale,4), max_steps, status_sp, phi_end_sp)
+        call check_int('sp b=3 status', status_sp, 1)
+    end subroutine test_single_precision_matches
 
 end program test_geodesic_kernel

@@ -1,8 +1,8 @@
 module geodesic_kernel
     use cudafor
     use iso_c_binding, only: c_int32_t
-    use geodesic, only: rk4_step
-    use photon, only: init_ray
+    use geodesic, only: rk4_step, rk4_step_sp
+    use photon, only: init_ray, init_ray_sp
     use camera_rays, only: pi, pixel_direction
     use ray_plane, only: to_equatorial, from_equatorial
     use shading, only: sky_color
@@ -35,12 +35,49 @@ module geodesic_kernel
                 exit
             else if (y(2) > r_escape .and. y(6) > 0.0d0) then 
                 status = 2
-                phi_end = y(4)
+                phi_end = y(4) + asin( (y(8) / (-y(5))) / y(2) )
                 exit
             end if
         end do
 
     end subroutine trace_camera_ray
+
+    ! Single precision copy of trace_camera_ray. This is what render_kernel
+    ! runs: consumer GPUs do double precision at 1/64 of the single
+    ! precision rate, and the picture does not need more than float
+    ! accuracy. trace_camera_ray above stays the double precision
+    ! reference; test_geodesic_kernel checks the two agree.
+    attributes(host,device) subroutine trace_camera_ray_sp(n_plane,r_obs,r_capture, r_escape, step_scale, max_steps, status, phi_end)
+
+        real(4), intent(in) :: n_plane(3)
+        real(4), intent(in) :: r_obs, r_capture,r_escape
+        real(4), intent(in) :: step_scale
+        integer, intent(in)  :: max_steps
+        integer, intent(out) :: status
+        real(4), intent(out) :: phi_end
+
+        real(4) :: y(8)
+        real(4) :: h
+        integer :: step
+
+        call init_ray_sp(r_obs, 0.5e0*real(pi,4), 0.0e0, n_plane, y)
+        status = 0
+        phi_end = 0.0e0
+
+        do step = 1,max_steps
+            h = step_scale * y(2)
+            call rk4_step_sp(y,h)
+            if(y(2) < r_capture) then
+                status = 1
+                exit
+            else if (y(2) > r_escape .and. y(6) > 0.0e0) then
+                status = 2
+                phi_end = y(4) + asin( (y(8) / (-y(5))) / y(2) )
+                exit
+            end if
+        end do
+
+    end subroutine trace_camera_ray_sp
 
     attributes(global) subroutine render_kernel(pixels,width,height,fov_y,r_obs, r_capture, r_escape,step_scale,max_steps)
 
@@ -58,7 +95,8 @@ module geodesic_kernel
         double precision :: tangent(2)
         double precision :: d(3)
         double precision :: rgb(3)
-        double precision :: phi_end
+        real(4) :: n_plane_sp(3)
+        real(4) :: phi_end
 
         i = (blockIdx % x - 1) * blockDim % x + threadIdx % x
         j = (blockIdx % y - 1) * blockDim % y + threadIdx % y
@@ -68,10 +106,13 @@ module geodesic_kernel
 
         call pixel_direction(i-1,j-1,0.5d0,0.5d0,width,height,fov_y,n)
         call to_equatorial(n,n_plane,tangent)
-        call trace_camera_ray(n_plane,r_obs,r_capture,r_escape,step_scale, max_steps, status, phi_end)
-        
+        ! Camera setup stays in double precision (once per pixel, cheap);
+        ! only the integration loop runs in single precision.
+        n_plane_sp = real(n_plane, 4)
+        call trace_camera_ray_sp(n_plane_sp, real(r_obs,4), real(r_capture,4), real(r_escape,4), real(step_scale,4), max_steps, status, phi_end)
+
         if(status == 2) then
-            call from_equatorial(phi_end,tangent,d)
+            call from_equatorial(dble(phi_end),tangent,d)
             call sky_color(d,rgb)
         else 
             rgb = 0.0d0

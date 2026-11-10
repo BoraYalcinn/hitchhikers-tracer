@@ -2,7 +2,7 @@ program main
   use cudafor
   use iso_c_binding, only: c_int32_t
   use kernel
-  use sdlü
+  use sdl
   use frame_output
   use geodesic_kernel
   use camera_rays, only: degrees_to_radians
@@ -36,13 +36,15 @@ program main
     stop 1
   end if
 
+  ! The tick rate is needed by every timing below, so read it once up front.
+  call system_clock(count_rate=rate)
+
   fov_y = degrees_to_radians(60.0d0)
   call system_clock(t0)
   call render_frame(pixels_d, screen_width, screen_height, fov_y, r_obs, r_capture, r_escape, step_scale, max_steps)
   call system_clock(t1)
   print *, "render ms: ", 1000.0d0 * real(t1 - t0, 8) / real(rate, 8)
 
-  call system_clock(count_rate=rate)
   call system_clock(t_start)
   frames = 0
 
@@ -51,6 +53,8 @@ program main
     call system_clock(t_now)
     if(t_now - t_start >= rate) then
       print *, "FPS: ", real(frames) / (real(t_now - t_start) / real(rate))
+      t_start = t_now
+      frames = 0
     end if
     call sdl_poll_quit(quit)
     call present_frame(pixels_d, pixels)
