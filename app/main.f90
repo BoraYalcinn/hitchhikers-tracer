@@ -2,8 +2,10 @@ program main
   use cudafor
   use iso_c_binding, only: c_int32_t
   use kernel
-  use sdl
+  use sdlü
   use frame_output
+  use geodesic_kernel
+  use camera_rays, only: degrees_to_radians
   implicit none
 
   integer :: screen_width = 1600
@@ -16,7 +18,12 @@ program main
 
   integer(c_int32_t), allocatable :: pixels(:,:)
   integer(c_int32_t), allocatable, device :: pixels_d(:,:)
-  type(dim3) :: blocks, threads
+  double precision, parameter :: r_obs = 20.0d0
+  double precision, parameter :: r_capture = 2.05d0
+  double precision, parameter :: r_escape = 100.0d0
+  double precision, parameter :: step_scale = 0.005d0
+  integer, parameter :: max_steps = 200000
+  double precision :: fov_y
 
   allocate(pixels(screen_width, screen_height))
   allocate(pixels_d(screen_width, screen_height))
@@ -27,10 +34,9 @@ program main
     stop 1
   end if
 
-  threads = dim3(16, 16, 1)
-  blocks = dim3((screen_width + 15) / 16, (screen_height + 15) / 16, 1)
-  call fill_gradient<<<blocks, threads>>>(screen_width, screen_height, pixels_d)
-
+  fov_y = degrees_to_radians(60.0d0)
+  call render_frame(pixels_d, screen_width, screen_height, fov_y, r_obs, r_capture, r_escape, step_scale, max_steps)
+    
   call system_clock(count_rate=rate)
   call system_clock(t_start)
   frames = 0
