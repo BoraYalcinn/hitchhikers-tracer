@@ -14,7 +14,7 @@ module metric
 
 contains
 
-  attributes(host,device) subroutine metric_inv(x, ginv, dginv)
+  attributes(host,device) pure subroutine metric_inv(x, ginv, dginv)
     real(wp), intent(in)  :: x(4)
     real(wp), intent(out) :: ginv(4,4)
     real(wp), intent(out) :: dginv(4,4,4)
@@ -44,7 +44,7 @@ contains
     dginv(3,4,4) = -c4*cos(theta)/c2**3
   end subroutine metric_inv
 
-  attributes(host,device) subroutine metric_cov(x, gcov)
+  attributes(host,device) pure subroutine metric_cov(x, gcov)
     real(wp), intent(in)  :: x(4)
     real(wp), intent(out) :: gcov(4,4)
     real(wp) :: r, theta, c0, c1

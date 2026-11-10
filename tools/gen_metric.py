@@ -106,7 +106,7 @@ def subroutine_lines(sub_name, outputs, coords, entries):
 
     arg_names = ['x'] + [var for var, _ in outputs]
     lines = []
-    lines.append(f'  attributes(host,device) subroutine {sub_name}({", ".join(arg_names)})')
+    lines.append(f'  attributes(host,device) pure subroutine {sub_name}({", ".join(arg_names)})')
     lines.append('    real(wp), intent(in)  :: x(4)')
     for var, shape in outputs:
         lines.append(f'    real(wp), intent(out) :: {var}{shape}')

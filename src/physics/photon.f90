@@ -4,7 +4,7 @@ module photon
     implicit none
 
     contains
-    attributes(host,device) subroutine init_ray(r,theta,phi,n,y)
+    attributes(host,device) pure subroutine init_ray(r,theta,phi,n,y)
     
         double precision, intent(in) :: r
         double precision, intent(in) :: theta
