@@ -5,6 +5,7 @@ module geodesic_kernel
     use photon, only: init_ray
     use camera_rays, only: pi, pixel_direction
     use ray_plane, only: to_equatorial, from_equatorial
+    use shading, only: sky_color
     implicit none
 
     contains
@@ -71,7 +72,7 @@ module geodesic_kernel
         
         if(status == 2) then
             call from_equatorial(phi_end,tangent,d)
-            rgb = 0.5d0 * (d+1.0d0)
+            call sky_color(d,rgb)
         else 
             rgb = 0.0d0
         end if
