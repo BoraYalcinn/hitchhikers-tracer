@@ -24,7 +24,9 @@ program main
   double precision, parameter :: step_scale = 0.005d0
   integer, parameter :: max_steps = 200000
   double precision :: fov_y
-  
+  integer :: samples
+
+  samples = 1
 
   allocate(pixels(screen_width, screen_height))
   allocate(pixels_d(screen_width, screen_height))
@@ -40,7 +42,7 @@ program main
 
   fov_y = degrees_to_radians(60.0d0)
   call system_clock(t0)
-  call render_frame(pixels_d, screen_width, screen_height, fov_y, r_obs, r_capture, r_escape, step_scale, max_steps)
+  call render_frame(pixels_d, screen_width, screen_height, fov_y, r_obs, r_capture, r_escape, step_scale, max_steps,samples)
   call system_clock(t1)
   print *, "render ms: ", 1000.0d0 * real(t1 - t0, 8) / real(rate, 8)
 

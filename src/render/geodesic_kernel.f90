@@ -79,14 +79,18 @@ module geodesic_kernel
 
     end subroutine trace_camera_ray_sp
 
-    attributes(global) subroutine render_kernel(pixels,width,height,fov_y,r_obs, r_capture, r_escape,step_scale,max_steps)
+    attributes(global) subroutine render_kernel(pixels,width,height,fov_y,r_obs, r_capture, r_escape,step_scale,max_steps,samples)
 
-    integer(c_int32_t), device :: pixels(:,:)
+        integer(c_int32_t), device :: pixels(:,:)
         integer, value :: width, height
         integer, value :: max_steps
         double precision, value :: fov_y
         double precision, value :: r_obs, r_capture, r_escape
         double precision, value :: step_scale
+        integer, value :: samples
+        double precision :: rgb_sum(3)
+        double precision :: ox, oy
+        double precision :: sx, sy
 
         integer :: i, j
         integer :: status
@@ -104,20 +108,29 @@ module geodesic_kernel
             return
         end if
 
-        call pixel_direction(i-1,j-1,0.5d0,0.5d0,width,height,fov_y,n)
-        call to_equatorial(n,n_plane,tangent)
-        ! Camera setup stays in double precision (once per pixel, cheap);
-        ! only the integration loop runs in single precision.
-        n_plane_sp = real(n_plane, 4)
-        call trace_camera_ray_sp(n_plane_sp, real(r_obs,4), real(r_capture,4), real(r_escape,4), real(step_scale,4), max_steps, status, phi_end)
+        rgb_sum = 0.0d0
+        do sy = 1, samples
+            do sx = 1, samples
+                ox = (dble(sx) - 0.5d0) / dble(samples)
+                oy = (dble(sy) - 0.5d0) / dble(samples)
 
-        if(status == 2) then
-            call from_equatorial(dble(phi_end),tangent,d)
-            call sky_color(d,rgb)
-        else 
-            rgb = 0.0d0
-        end if
+                call pixel_direction(i-1,j-1,ox,oy,width,height,fov_y,n)
+                call to_equatorial(n,n_plane,tangent)
+                n_plane_sp = real(n_plane, 4)
+                call trace_camera_ray_sp(n_plane_sp, real(r_obs,4), real(r_capture,4), real(r_escape,4), real(step_scale,4), max_steps, status, phi_end)
 
+                if(status == 2) then
+                    call from_equatorial(dble(phi_end),tangent,d)
+                    call sky_color(d,rgb)
+                else
+                    rgb = 0.0d0
+                end if
+
+                rgb_sum = rgb_sum + rgb
+            end do
+        end do
+
+        rgb = rgb_sum / dble(samples*samples)
         red   = int(255.0d0*rgb(1) + 0.5d0)
         green = int(255.0d0*rgb(2) + 0.5d0)
         blue  = int(255.0d0*rgb(3) + 0.5d0)
@@ -126,12 +139,13 @@ module geodesic_kernel
 
     end subroutine render_kernel
 
-    subroutine render_frame(pixels, width, height, fov_y, r_obs, r_capture, r_escape, step_scale, max_steps)
+    subroutine render_frame(pixels, width, height, fov_y, r_obs, r_capture, r_escape, step_scale, max_steps, samples)
         integer(c_int32_t), device :: pixels(:,:)
-        integer, intent(in) :: width, height 
+        integer, intent(in) :: width, height
         integer, intent(in) :: max_steps
-        double precision, intent(in) :: fov_y 
-        double precision, intent(in) :: r_obs, r_capture, r_escape 
+        integer, intent(in) :: samples
+        double precision, intent(in) :: fov_y
+        double precision, intent(in) :: r_obs, r_capture, r_escape
         double precision, intent(in) :: step_scale
 
         type(dim3) :: block, grid
@@ -139,7 +153,7 @@ module geodesic_kernel
 
         block = dim3(16,16,1)
         grid  = dim3((width + 15)/16,(height + 15)/16,1)
-        call render_kernel<<<grid,block>>>(pixels, width, height, fov_y, r_obs,r_capture, r_escape, step_scale, max_steps)
+        call render_kernel<<<grid,block>>>(pixels, width, height, fov_y, r_obs,r_capture, r_escape, step_scale, max_steps, samples)
         ierr = cudaDeviceSynchronize()
 
     end subroutine render_frame
