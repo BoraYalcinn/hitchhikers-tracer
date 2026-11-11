@@ -1,7 +1,6 @@
 program main
   use cudafor
   use iso_c_binding, only: c_int32_t
-  use kernel
   use sdl
   use frame_output
   use geodesic_kernel
